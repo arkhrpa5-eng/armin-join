@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join Armin: my first API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF1F7;
+    --ink: #121A33;
+    --muted: #55607D;
+    --field: #FFFFFF;
+    --field-line: #AEB9D3;
+    --rule: #CCD4E6;
+    --slab: #2440E0;
+    --slab-ink: #F4F6FF;
+    --slab-soft: rgba(244, 246, 255, .74);
+    --slab-rule: rgba(244, 246, 255, .38);
+    --key: #FFD466;
+    --cta: #FFC233;
+    --cta-hover: #FFB300;
+    --cta-ink: #121A33;
+    --ok: #8CF5C9;
+    --ok-ink: #06301F;
+    --bad: #FFD0C7;
+    --bad-ink: #5A1206;
+    --error: #B42318;
+    --focus: #2440E0;
+    --head: #2440E0;
+    --coral: #FF6B5A;
+    --mint: #2CCB9B;
+    --violet: #A78BFF;
+    --tile-ink: #121A33;
+    --v-first: #FFB5AA;
+    --v-last: #8CF5C9;
+    --v-email: #D9CFFF;
+
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C1124;
+      --ink: #EAEEFB;
+      --muted: #9BA7C8;
+      --field: #151C38;
+      --field-line: #3A4570;
+      --rule: #262F52;
+      --slab: #2A45E6;
+      --error: #FF9B8E;
+      --focus: #9FB0FF;
+      --head: #9FB0FF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1124;
+    --ink: #EAEEFB;
+    --muted: #9BA7C8;
+    --field: #151C38;
+    --field-line: #3A4570;
+    --rule: #262F52;
+    --slab: #2A45E6;
+    --error: #FF9B8E;
+    --focus: #9FB0FF;
+    --head: #9FB0FF;
+  }
+
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  [hidden] { display: none !important; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+  .page {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 5vw, 3rem) clamp(2.5rem, 6vw, 4rem);
+  }
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: start;
+  }
+
+  /* Intro */
+  h1 {
+    margin: 0;
+    font-size: clamp(2.5rem, 6.4vw, 4.75rem);
+    font-weight: 700;
+    line-height: .98;
+    letter-spacing: -.035em;
+    text-wrap: balance;
+    color: var(--head);
+  }
+  .intro { margin-top: 1.5rem; max-width: 36rem; }
+  .intro p { margin: 0; color: var(--muted); }
+  .intro p + p { margin-top: 1rem; }
+  .intro .lede { font-size: 1.1875rem; color: var(--ink); }
+
+  .steps {
+    list-style: none;
+    margin: clamp(1.75rem, 4vw, 2.5rem) 0 0;
+    padding: 0;
+    max-width: 36rem;
+    display: grid;
+    gap: .625rem;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    column-gap: .75rem;
+    align-items: start;
+    padding: 1rem 1.25rem 1.125rem;
+    border-radius: 1rem;
+    color: var(--tile-ink);
+  }
+  .step.coral { background: var(--coral); }
+  .step.mint { background: var(--mint); }
+  .step.violet { background: var(--violet); }
+  .step .num {
+    grid-row: span 2;
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: .9;
+    letter-spacing: -.04em;
+  }
+  .step-title { margin: 0; font-weight: 700; font-size: 1.125rem; line-height: 1.25; }
+  .step-text { margin: .25rem 0 0; font-size: 1rem; line-height: 1.4; }
+
+  .invite {
+    margin: clamp(1.75rem, 4vw, 2.5rem) 0 0;
+    max-width: 34rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -.015em;
+  }
+
+  /* Form */
+  .join {
+    margin-top: 1.25rem;
+    max-width: 34rem;
+    display: grid;
+    gap: 1.125rem;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .field { display: grid; gap: .375rem; min-width: 0; }
+  .field.c-first { --c: var(--coral); }
+  .field.c-last { --c: var(--mint); }
+  .field.c-email { --c: var(--violet); }
+  .field label { font-weight: 500; font-size: 1rem; }
+  .field label::before {
+    content: "";
+    display: inline-block;
+    width: .6875rem;
+    height: .6875rem;
+    margin-right: .5rem;
+    border-radius: .1875rem;
+    background: var(--c);
+  }
+  .field input {
+    width: 100%;
+    height: 3.25rem;
+    padding: 0 .9375rem 0 1.25rem;
+    font: inherit;
+    color: var(--ink);
+    background: var(--field);
+    box-shadow: inset 5px 0 0 var(--c);
+    border: 1.5px solid var(--field-line);
+    border-radius: .75rem;
+    transition: border-color .15s;
+  }
+  .field input:hover { border-color: var(--muted); }
+  .field input:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    border-color: var(--focus);
+  }
+  .field input[aria-invalid="true"] { border-color: var(--error); }
+  .field .err {
+    margin: 0;
+    min-height: 0;
+    font-size: .9375rem;
+    color: var(--error);
+  }
+
+  .join-btn {
+    justify-self: start;
+    margin-top: .375rem;
+    height: 3.5rem;
+    padding: 0 2rem;
+    font: inherit;
+    font-size: 1.1875rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--cta-ink);
+    background: var(--cta);
+    border: 0;
+    border-radius: .75rem;
+    cursor: pointer;
+    transition: background-color .15s, transform .1s;
+  }
+  .join-btn:hover { background: var(--cta-hover); }
+  .join-btn:active { transform: translateY(1px); }
+  .join-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .join-btn:disabled { cursor: default; opacity: .7; transform: none; }
+  .join-btn:disabled:hover { background: var(--cta); }
+
+  /* Request and response slab */
+  .slab {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+    background: var(--slab);
+    color: var(--slab-ink);
+    border-radius: 1.25rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+  }
+  .slab h2 {
+    margin: 0 0 .75rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--slab-soft);
+  }
+  .code-wrap { overflow-x: auto; }
+  .route, .body {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: .9375rem;
+    line-height: 1.7;
+    white-space: pre;
+  }
+  .route { font-weight: 500; margin-bottom: .25rem; }
+  .body .k { color: var(--key); }
+  .body .p { color: var(--slab-soft); }
+  .body .v-first { color: var(--v-first); }
+  .body .v-last { color: var(--v-last); }
+  .body .v-email { color: var(--v-email); }
+  .body .empty { color: var(--slab-soft); }
+
+  .divider {
+    border: 0;
+    border-top: 2px dashed var(--slab-rule);
+    margin: clamp(1.25rem, 3vw, 1.75rem) 0;
+  }
+
+  .response { min-height: 9.5rem; }
+  .waiting { margin: 0; color: var(--slab-soft); }
+  .status {
+    display: inline-block;
+    margin: 0 0 .875rem;
+    padding: .1875rem .625rem;
+    border-radius: .5rem;
+    font-family: var(--mono);
+    font-size: .875rem;
+    font-weight: 500;
+  }
+  .status.ok { background: var(--ok); color: var(--ok-ink); }
+  .status.bad { background: var(--bad); color: var(--bad-ink); }
+  .reply-title {
+    margin: 0;
+    font-size: clamp(1.625rem, 3.2vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+  }
+  .reply-text {
+    margin: .75rem 0 0;
+    color: var(--slab-soft);
+    overflow-wrap: anywhere;
+  }
+  .reply { animation: arrive .34s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes arrive {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 52rem) {
+    .split { grid-template-columns: 1fr; }
+    .slab { position: static; }
+  }
+  @media (max-width: 26rem) {
+    .pair { grid-template-columns: 1fr; }
+    .join-btn { justify-self: stretch; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reply { animation: none; }
+    .field input, .join-btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="split">
+    <div>
+      <h1>Hi, I'm Armin. This is the first time I've created an API.</h1>
+      <div class="intro">
+        <p class="lede">An API is how one piece of software asks another to do something. You send a request, it does a job, and it sends a response back. This page is my first one, and you can try it right here.</p>
+        <p>Mine does one small job: it takes your name and email, adds you to my list, and emails you a thank-you. Everything you type shows up in the request panel, so you can see exactly what gets sent before you send it.</p>
+      </div>
+
+      <ol class="steps" aria-label="How it works">
+        <li class="step coral">
+          <span class="num" aria-hidden="true">1</span>
+          <p class="step-title">You fill in the form</p>
+          <p class="step-text">Your first name, last name and email become the request.</p>
+        </li>
+        <li class="step mint">
+          <span class="num" aria-hidden="true">2</span>
+          <p class="step-title">You click Join me</p>
+          <p class="step-text">The request goes to my API, which lets me know and asks Resend to send your email.</p>
+        </li>
+        <li class="step violet">
+          <span class="num" aria-hidden="true">3</span>
+          <p class="step-title">You get a response</p>
+          <p class="step-text">A thank-you shows up here and in your inbox.</p>
+        </li>
+      </ol>
+
+      <p class="invite">It's a small start, and I'd like you to be part of it.</p>
+
+      <div class="join" role="group" aria-label="Join Armin">
+        <div class="pair">
+          <div class="field c-first">
+            <label for="firstName">First name</label>
+            <input id="firstName" type="text" autocomplete="given-name" maxlength="80" aria-describedby="firstNameErr">
+            <p class="err" id="firstNameErr" aria-live="polite"></p>
+          </div>
+          <div class="field c-last">
+            <label for="lastName">Last name</label>
+            <input id="lastName" type="text" autocomplete="family-name" maxlength="80" aria-describedby="lastNameErr">
+            <p class="err" id="lastNameErr" aria-live="polite"></p>
+          </div>
+        </div>
+        <div class="field c-email">
+          <label for="email">Email</label>
+          <input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" aria-describedby="emailErr">
+          <p class="err" id="emailErr" aria-live="polite"></p>
+        </div>
+        <div class="trap" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <button class="join-btn" id="joinBtn" type="button">Join me</button>
+      </div>
+    </div>
+
+    <aside class="slab" aria-label="Your request and the response">
+      <h2>Your request</h2>
+      <div class="code-wrap">
+        <pre class="route">POST /join</pre>
+        <pre class="body" id="reqBody"></pre>
+      </div>
+      <hr class="divider">
+      <h2>Response</h2>
+      <div class="response" id="response" role="status" aria-live="polite">
+        <p class="waiting">Nothing yet. Click Join me to send your request.</p>
+      </div>
+    </aside>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  var first = document.getElementById('firstName');
+  var last = document.getElementById('lastName');
+  var email = document.getElementById('email');
+  var btn = document.getElementById('joinBtn');
+  var reqBody = document.getElementById('reqBody');
+  var response = document.getElementById('response');
+  var fields = [
+    { el: first, err: document.getElementById('firstNameErr'), check: function (v) { return v ? '' : 'Add your first name.'; } },
+    { el: last, err: document.getElementById('lastNameErr'), check: function (v) { return v ? '' : 'Add your last name.'; } },
+    { el: email, err: document.getElementById('emailErr'), check: function (v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'Enter an email like name@example.com.';
+      } }
+  ];
+
+  var saving = false;
+
+  function readForm() {
+    return { firstName: first.value.trim(), lastName: last.value.trim(), email: email.value.trim() };
+  }
+
+  function span(cls, text) {
+    var s = document.createElement('span');
+    s.className = cls;
+    s.textContent = text;
+    return s;
+  }
+
+  // The request panel mirrors the form as the visitor types.
+  function renderRequest() {
+    var d = readForm();
+    var rows = [['firstName', d.firstName, 'v-first'], ['lastName', d.lastName, 'v-last'], ['email', d.email, 'v-email']];
+    reqBody.textContent = '';
+    reqBody.appendChild(span('p', '{\n'));
+    rows.forEach(function (row, i) {
+      reqBody.appendChild(document.createTextNode('  '));
+      reqBody.appendChild(span('k', JSON.stringify(row[0])));
+      reqBody.appendChild(span('p', ': '));
+      reqBody.appendChild(span(row[1] ? 's ' + row[2] : 's empty', JSON.stringify(row[1])));
+      reqBody.appendChild(span('p', i < rows.length - 1 ? ',\n' : '\n'));
+    });
+    reqBody.appendChild(span('p', '}'));
+  }
+
+  function showReply(kind, status, title, text, quiet) {
+    response.textContent = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'reply';
+    var st = document.createElement('p');
+    st.className = 'status ' + kind;
+    st.textContent = status;
+    var h = document.createElement('p');
+    h.className = 'reply-title';
+    h.textContent = title;
+    var p = document.createElement('p');
+    p.className = 'reply-text';
+    p.textContent = text;
+    wrap.appendChild(st); wrap.appendChild(h); wrap.appendChild(p);
+    response.appendChild(wrap);
+    if (!quiet && response.scrollIntoView) {
+      var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      response.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+    }
+  }
+
+  function showJoined(d, emailSent) {
+    showReply(
+      'ok',
+      '201 Created',
+      'Thank you for joining, ' + d.firstName + '.',
+      emailSent
+        ? 'You\u2019re on Armin\u2019s list, and a thank-you email is on its way to ' + d.email + '.'
+        : 'You\u2019re on Armin\u2019s list. The thank-you email didn\u2019t send this time, but Armin has your details.'
+    );
+    btn.textContent = 'Joined';
+    btn.disabled = true;
+  }
+
+  function showFailure(status, message) {
+    showReply('bad', status, 'You haven\u2019t joined yet.',
+      message || 'Something went wrong. Check your connection and click Join me again.');
+    btn.textContent = 'Join me';
+    btn.disabled = false;
+  }
+
+  function validate() {
+    var d = readForm();
+    var values = [d.firstName, d.lastName, d.email];
+    var firstBad = null;
+    fields.forEach(function (f, i) {
+      var msg = f.check(values[i]);
+      f.err.textContent = msg;
+      if (msg) {
+        f.el.setAttribute('aria-invalid', 'true');
+        if (!firstBad) firstBad = f.el;
+      } else {
+        f.el.removeAttribute('aria-invalid');
+      }
+    });
+    if (firstBad) { firstBad.focus(); return null; }
+    return d;
+  }
+
+  async function join() {
+    if (saving || btn.disabled) return;
+    var d = validate();
+    if (!d) return;
+    saving = true;
+    btn.disabled = true;
+    btn.textContent = 'Joining\u2026';
+    try {
+      var res = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: d.firstName,
+          lastName: d.lastName,
+          email: d.email,
+          website: document.getElementById('website').value
+        })
+      });
+      var data = {};
+      try { data = await res.json(); } catch (e) { /* no body */ }
+      if (res.ok) {
+        showJoined(d, data.emailSent !== false);
+      } else {
+        showFailure(res.status + ' ' + (res.statusText || 'Error'), data.error);
+      }
+    } catch (e) {
+      showFailure('Network error', 'Your request didn\u2019t reach the server. Check your connection and click Join me again.');
+    } finally {
+      saving = false;
+    }
+  }
+
+  fields.forEach(function (f) {
+    f.el.addEventListener('input', function () {
+      renderRequest();
+      if (f.el.hasAttribute('aria-invalid')) {
+        f.el.removeAttribute('aria-invalid');
+        f.err.textContent = '';
+      }
+      if (!saving) { btn.disabled = false; btn.textContent = 'Join me'; }
+    });
+    f.el.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); join(); }
+    });
+  });
+  btn.addEventListener('click', join);
+  renderRequest();
+
+})();
+</script>
+</body>
+</html>

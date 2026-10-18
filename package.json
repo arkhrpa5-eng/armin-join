@@ -1,0 +1,10 @@
+{
+  "name": "armin-join",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Armin's first API: a join page that sends a thank-you email through Resend.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}
