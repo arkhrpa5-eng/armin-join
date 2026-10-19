@@ -406,14 +406,24 @@
   var robotErr = document.getElementById('robotErr');
   var recaptchaId = null;      // set once the box is on the page
   var recaptchaWanted = false; // true when the server has a reCAPTCHA key
+  var recaptchaVersion = 'v3';
+  var recaptchaKey = null;
 
-  function recaptchaToken() {
-    if (recaptchaId === null || !window.grecaptcha) return '';
+  // v2: read the tick box. v3: ask Google for a fresh invisible token.
+  async function recaptchaToken() {
+    if (!window.grecaptcha) return '';
+    if (recaptchaVersion === 'v3') {
+      try {
+        await new Promise(function (resolve) { window.grecaptcha.ready(resolve); });
+        return (await window.grecaptcha.execute(recaptchaKey, { action: 'join' })) || '';
+      } catch (e) { return ''; }
+    }
+    if (recaptchaId === null) return '';
     try { return window.grecaptcha.getResponse(recaptchaId) || ''; } catch (e) { return ''; }
   }
 
   function resetRecaptcha() {
-    if (recaptchaId === null || !window.grecaptcha) return;
+    if (recaptchaVersion === 'v3' || recaptchaId === null || !window.grecaptcha) return;
     try { window.grecaptcha.reset(recaptchaId); } catch (e) { /* box not ready */ }
   }
 
@@ -422,11 +432,30 @@
     var key = null;
     try {
       var r = await fetch('/api/join', { method: 'GET' });
-      if (r.ok) key = (await r.json()).recaptchaSiteKey;
+      if (r.ok) {
+        var info = await r.json();
+        key = info.recaptchaSiteKey;
+        recaptchaVersion = info.recaptchaVersion === 'v2' ? 'v2' : 'v3';
+      }
     } catch (e) { return; }
     if (!key) return;
     recaptchaWanted = true;
+    recaptchaKey = key;
     robot.hidden = false;
+
+    if (recaptchaVersion === 'v3') {
+      // Invisible check: Google shows its small badge in the corner of the page.
+      document.getElementById('recaptchaBox').hidden = true;
+      var v3 = document.createElement('script');
+      v3.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(key);
+      v3.async = true;
+      v3.onerror = function () {
+        robotErr.textContent = 'The robot check didn\u2019t load. Turn off any ad blocker for this page and refresh.';
+      };
+      document.head.appendChild(v3);
+      return;
+    }
+
     window.onRecaptchaReady = function () {
       var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches &&
         document.documentElement.getAttribute('data-theme') !== 'light';
@@ -537,15 +566,20 @@
     if (saving || btn.disabled) return;
     var d = validate();
     if (!d) return;
-    var token = recaptchaToken();
-    if (recaptchaWanted && !token) {
-      robotErr.textContent = 'Tick the \u201cI\u2019m not a robot\u201d box first.';
-      return;
-    }
-    robotErr.textContent = '';
     saving = true;
     btn.disabled = true;
     btn.textContent = 'Joining\u2026';
+    var token = recaptchaWanted ? await recaptchaToken() : '';
+    if (recaptchaWanted && !token) {
+      robotErr.textContent = recaptchaVersion === 'v2'
+        ? 'Tick the \u201cI\u2019m not a robot\u201d box first.'
+        : 'The robot check isn\u2019t ready yet. Wait a moment and click Join me again.';
+      saving = false;
+      btn.disabled = false;
+      btn.textContent = 'Join me';
+      return;
+    }
+    robotErr.textContent = '';
     try {
       var res = await fetch('/api/join', {
         method: 'POST',
@@ -564,7 +598,7 @@
         showJoined(d, data.emailSent !== false);
       } else {
         showFailure(res.status + ' ' + (res.statusText || 'Error'), data.error);
-        if (data.recaptcha) robotErr.textContent = 'Tick the box again.';
+        if (data.recaptcha && recaptchaVersion === 'v2') robotErr.textContent = 'Tick the box again.';
         resetRecaptcha();
       }
     } catch (e) {

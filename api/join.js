@@ -8,12 +8,18 @@
 //                         (leave it out while testing to use Resend's test sender)
 //   RECAPTCHA_SITE_KEY    the public reCAPTCHA key (shows the "I'm not a robot" box)
 //   RECAPTCHA_SECRET_KEY  the secret reCAPTCHA key (checks the box was really ticked)
-//                         Leave both reCAPTCHA settings out and the form works without the box.
+//   RECAPTCHA_VERSION     "v3" (default: invisible check, small badge in the corner)
+//                         or "v2" (the "I'm not a robot" tick box). Must match your key's type.
+//                         Leave the reCAPTCHA settings out and the form works without any check.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Asks Google whether the "I'm not a robot" box was really ticked.
-async function passedRecaptcha(secret, token, ip) {
+function recaptchaVersion() {
+  return String(process.env.RECAPTCHA_VERSION || 'v3').trim().toLowerCase() === 'v2' ? 'v2' : 'v3';
+}
+
+// Asks Google whether this visitor is a real person.
+async function passedRecaptcha(secret, token, ip, version) {
   if (!token) return false;
   try {
     const reply = await fetch('https://www.google.com/recaptcha/api/siteverify', {
@@ -22,8 +28,19 @@ async function passedRecaptcha(secret, token, ip) {
       body: new URLSearchParams({ secret, response: token, ...(ip ? { remoteip: ip } : {}) }),
     });
     const result = await reply.json();
-    if (!result.success) console.error('reCAPTCHA said no:', result['error-codes']);
-    return result.success === true;
+    if (!result.success) {
+      console.error('reCAPTCHA said no:', result['error-codes']);
+      return false;
+    }
+    // v3 gives a score from 0 (bot) to 1 (human) instead of a tick.
+    if (version === 'v3') {
+      if (result.action && result.action !== 'join') return false;
+      if (typeof result.score === 'number' && result.score < 0.5) {
+        console.error('reCAPTCHA score too low:', result.score);
+        return false;
+      }
+    }
+    return true;
   } catch (error) {
     console.error('Could not reach reCAPTCHA:', error);
     return false;
@@ -63,7 +80,8 @@ async function sendEmail(apiKey, message) {
 export default async function handler(req, res) {
   // The page asks this first, to find out whether to show the reCAPTCHA box.
   if (req.method === 'GET') {
-    return res.status(200).json({ recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || null });
+    const key = String(process.env.RECAPTCHA_SITE_KEY || '').trim();
+    return res.status(200).json({ recaptchaSiteKey: key || null, recaptchaVersion: recaptchaVersion() });
   }
 
   if (req.method !== 'POST') {
@@ -93,12 +111,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Add your first name, last name and a valid email.' });
   }
 
-  const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+  const recaptchaSecret = String(process.env.RECAPTCHA_SECRET_KEY || '').trim();
   if (recaptchaSecret) {
     const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    const passed = await passedRecaptcha(recaptchaSecret, clean(body.recaptchaToken, 4000), ip);
+    const version = recaptchaVersion();
+    const passed = await passedRecaptcha(recaptchaSecret, clean(body.recaptchaToken, 4000), ip, version);
     if (!passed) {
-      return res.status(400).json({ error: 'Tick the “I’m not a robot” box, then click Join me again.', recaptcha: true });
+      const message = version === 'v2'
+        ? 'Tick the “I’m not a robot” box, then click Join me again.'
+        : 'We couldn’t confirm you’re not a robot. Wait a moment and click Join me again.';
+      return res.status(400).json({ error: message, recaptcha: true });
     }
   }
 
