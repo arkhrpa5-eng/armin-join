@@ -84,6 +84,9 @@
     -webkit-font-smoothing: antialiased;
   }
   [hidden] { display: none !important; }
+  .robot { display: grid; gap: .375rem; min-height: 0; }
+  .robot[hidden] { display: none !important; }
+  .robot .err { margin: 0; font-size: .9375rem; color: var(--error); }
   .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
   .page {
@@ -358,6 +361,10 @@
           <p class="err" id="emailErr" aria-live="polite"></p>
         </div>
         <div class="trap" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <div class="robot" id="robot" hidden>
+          <div id="recaptchaBox"></div>
+          <p class="err" id="robotErr" aria-live="polite"></p>
+        </div>
         <button class="join-btn" id="joinBtn" type="button">Join me</button>
       </div>
     </div>
@@ -395,6 +402,50 @@
   ];
 
   var saving = false;
+  var robot = document.getElementById('robot');
+  var robotErr = document.getElementById('robotErr');
+  var recaptchaId = null;      // set once the box is on the page
+  var recaptchaWanted = false; // true when the server has a reCAPTCHA key
+
+  function recaptchaToken() {
+    if (recaptchaId === null || !window.grecaptcha) return '';
+    try { return window.grecaptcha.getResponse(recaptchaId) || ''; } catch (e) { return ''; }
+  }
+
+  function resetRecaptcha() {
+    if (recaptchaId === null || !window.grecaptcha) return;
+    try { window.grecaptcha.reset(recaptchaId); } catch (e) { /* box not ready */ }
+  }
+
+  // Ask the API whether reCAPTCHA is switched on, and if so, load Google's box.
+  async function setupRecaptcha() {
+    var key = null;
+    try {
+      var r = await fetch('/api/join', { method: 'GET' });
+      if (r.ok) key = (await r.json()).recaptchaSiteKey;
+    } catch (e) { return; }
+    if (!key) return;
+    recaptchaWanted = true;
+    robot.hidden = false;
+    window.onRecaptchaReady = function () {
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches &&
+        document.documentElement.getAttribute('data-theme') !== 'light';
+      recaptchaId = window.grecaptcha.render('recaptchaBox', {
+        sitekey: key,
+        theme: dark ? 'dark' : 'light',
+        callback: function () { robotErr.textContent = ''; },
+        'expired-callback': function () { robotErr.textContent = 'The check timed out. Tick the box again.'; }
+      });
+    };
+    var tag = document.createElement('script');
+    tag.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaReady&render=explicit';
+    tag.async = true;
+    tag.defer = true;
+    tag.onerror = function () {
+      robotErr.textContent = 'The \u201cI\u2019m not a robot\u201d box didn\u2019t load. Turn off any ad blocker for this page and refresh.';
+    };
+    document.head.appendChild(tag);
+  }
 
   function readForm() {
     return { firstName: first.value.trim(), lastName: last.value.trim(), email: email.value.trim() };
@@ -486,6 +537,12 @@
     if (saving || btn.disabled) return;
     var d = validate();
     if (!d) return;
+    var token = recaptchaToken();
+    if (recaptchaWanted && !token) {
+      robotErr.textContent = 'Tick the \u201cI\u2019m not a robot\u201d box first.';
+      return;
+    }
+    robotErr.textContent = '';
     saving = true;
     btn.disabled = true;
     btn.textContent = 'Joining\u2026';
@@ -497,7 +554,8 @@
           firstName: d.firstName,
           lastName: d.lastName,
           email: d.email,
-          website: document.getElementById('website').value
+          website: document.getElementById('website').value,
+          recaptchaToken: token
         })
       });
       var data = {};
@@ -506,6 +564,8 @@
         showJoined(d, data.emailSent !== false);
       } else {
         showFailure(res.status + ' ' + (res.statusText || 'Error'), data.error);
+        if (data.recaptcha) robotErr.textContent = 'Tick the box again.';
+        resetRecaptcha();
       }
     } catch (e) {
       showFailure('Network error', 'Your request didn\u2019t reach the server. Check your connection and click Join me again.');
@@ -529,6 +589,7 @@
   });
   btn.addEventListener('click', join);
   renderRequest();
+  setupRecaptcha();
 
 })();
 </script>

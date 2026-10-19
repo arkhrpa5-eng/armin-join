@@ -1,13 +1,34 @@
 // This is your API. When someone clicks "Join me", the page sends their
 // details here, and this code asks Resend to send the emails.
 //
-// It reads three settings (you add these in Vercel, never in this file):
-//   RESEND_API_KEY  your secret key from resend.com
-//   OWNER_EMAIL     your own email, so you hear about every new signup
-//   FROM_EMAIL      who the emails come from, e.g. "Armin <hello@yourdomain.com>"
-//                   (leave it out while testing to use Resend's test sender)
+// It reads these settings (you add them in Vercel, never in this file):
+//   RESEND_API_KEY        your secret key from resend.com
+//   OWNER_EMAIL           your own email, so you hear about every new signup
+//   FROM_EMAIL            who the emails come from, e.g. "Armin <hello@yourdomain.com>"
+//                         (leave it out while testing to use Resend's test sender)
+//   RECAPTCHA_SITE_KEY    the public reCAPTCHA key (shows the "I'm not a robot" box)
+//   RECAPTCHA_SECRET_KEY  the secret reCAPTCHA key (checks the box was really ticked)
+//                         Leave both reCAPTCHA settings out and the form works without the box.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Asks Google whether the "I'm not a robot" box was really ticked.
+async function passedRecaptcha(secret, token, ip) {
+  if (!token) return false;
+  try {
+    const reply = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token, ...(ip ? { remoteip: ip } : {}) }),
+    });
+    const result = await reply.json();
+    if (!result.success) console.error('reCAPTCHA said no:', result['error-codes']);
+    return result.success === true;
+  } catch (error) {
+    console.error('Could not reach reCAPTCHA:', error);
+    return false;
+  }
+}
 
 function clean(value, max) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -40,8 +61,13 @@ async function sendEmail(apiKey, message) {
 }
 
 export default async function handler(req, res) {
+  // The page asks this first, to find out whether to show the reCAPTCHA box.
+  if (req.method === 'GET') {
+    return res.status(200).json({ recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || null });
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Use POST to join.' });
   }
 
@@ -65,6 +91,15 @@ export default async function handler(req, res) {
 
   if (!firstName || !lastName || !EMAIL_PATTERN.test(email)) {
     return res.status(400).json({ error: 'Add your first name, last name and a valid email.' });
+  }
+
+  const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+  if (recaptchaSecret) {
+    const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    const passed = await passedRecaptcha(recaptchaSecret, clean(body.recaptchaToken, 4000), ip);
+    if (!passed) {
+      return res.status(400).json({ error: 'Tick the “I’m not a robot” box, then click Join me again.', recaptcha: true });
+    }
   }
 
   const safeFirst = escapeHtml(firstName);
