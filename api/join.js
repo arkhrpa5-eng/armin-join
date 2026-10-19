@@ -8,14 +8,14 @@
 //                         (leave it out while testing to use Resend's test sender)
 //   RECAPTCHA_SITE_KEY    the public reCAPTCHA key (shows the "I'm not a robot" box)
 //   RECAPTCHA_SECRET_KEY  the secret reCAPTCHA key (checks the box was really ticked)
-//   RECAPTCHA_VERSION     "v3" (default: invisible check, small badge in the corner)
-//                         or "v2" (the "I'm not a robot" tick box). Must match your key's type.
+//   RECAPTCHA_VERSION     "v2" (default: the "I'm not a robot" tick box)
+//                         or "v3" (invisible check, small badge in the corner). Must match your key's type.
 //                         Leave the reCAPTCHA settings out and the form works without any check.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function recaptchaVersion() {
-  return String(process.env.RECAPTCHA_VERSION || 'v3').trim().toLowerCase() === 'v2' ? 'v2' : 'v3';
+  return String(process.env.RECAPTCHA_VERSION || 'v2').trim().toLowerCase() === 'v3' ? 'v3' : 'v2';
 }
 
 // Asks Google whether this visitor is a real person.

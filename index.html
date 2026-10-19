@@ -406,7 +406,7 @@
   var robotErr = document.getElementById('robotErr');
   var recaptchaId = null;      // set once the box is on the page
   var recaptchaWanted = false; // true when the server has a reCAPTCHA key
-  var recaptchaVersion = 'v3';
+  var recaptchaVersion = 'v2';
   var recaptchaKey = null;
 
   // v2: read the tick box. v3: ask Google for a fresh invisible token.
@@ -435,7 +435,7 @@
       if (r.ok) {
         var info = await r.json();
         key = info.recaptchaSiteKey;
-        recaptchaVersion = info.recaptchaVersion === 'v2' ? 'v2' : 'v3';
+        recaptchaVersion = info.recaptchaVersion === 'v3' ? 'v3' : 'v2';
       }
     } catch (e) { return; }
     if (!key) return;
