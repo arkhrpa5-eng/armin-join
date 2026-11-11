@@ -594,7 +594,12 @@
       });
       var data = {};
       try { data = await res.json(); } catch (e) { /* no body */ }
-      if (res.ok) {
+      if (res.ok && data.unsubscribed) {
+        showReply('ok', '200 OK', 'This email unsubscribed earlier.',
+          'So Armin won\u2019t email ' + d.email + '. If you\u2019d like to rejoin, reply to one of his earlier emails and he\u2019ll add you back.');
+        btn.textContent = 'Join me';
+        btn.disabled = false;
+      } else if (res.ok) {
         showJoined(d, data.emailSent !== false);
       } else {
         showFailure(res.status + ' ' + (res.statusText || 'Error'), data.error);
