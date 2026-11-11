@@ -1,10 +1,13 @@
 // The page the unsubscribe link in the thank-you email opens.
 //
-// Opening the link shows a page with an Unsubscribe button. Clicking it
-// confirms, and emails you (OWNER_EMAIL) so you know to take them off your list.
+// Opening the link shows a page with an Unsubscribe button. Clicking it marks
+// the person unsubscribed in your Resend contacts, so Broadcasts skip them.
+// If Resend contacts can't be updated (for example the API key only has
+// "Sending access"), it emails you (OWNER_EMAIL) instead so nobody is missed.
 // Email apps with a built-in "Unsubscribe" button use this too.
 
 import { tokenMatches } from './_unsubscribe.js';
+import { markUnsubscribed } from './_contacts.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,8 +91,9 @@ export default async function handler(req, res) {
     return page(res, 405, 'This link doesn’t work', 'Open the unsubscribe link from your email.');
   }
 
-  const sent = await notifyOwner(email);
-  if (!sent) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const done = (apiKey && await markUnsubscribed(apiKey, email)) || await notifyOwner(email);
+  if (!done) {
     return page(res, 502, 'You haven’t been unsubscribed yet',
       'Something went wrong on our side. Try again in a minute, or reply to the email and ask to be removed.',
       '<form method="post"><button type="submit">Try again</button></form>');

@@ -13,6 +13,7 @@
 //                         Leave the reCAPTCHA settings out and the form works without any check.
 
 import { unsubscribeLink } from './_unsubscribe.js';
+import { saveContact } from './_contacts.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -143,7 +144,10 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Your details did not go through. Please try again.' });
   }
 
-  // 2. Send the thank-you to the person who joined.
+  // 2. Add them to your contact list in Resend (skipped quietly if the key can't).
+  await saveContact(apiKey, { email, firstName, lastName });
+
+  // 3. Send the thank-you to the person who joined.
   const unsubscribeUrl = unsubscribeLink(req, email);
   const emailSent = await sendEmail(apiKey, {
     from,
