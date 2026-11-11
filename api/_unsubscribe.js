@@ -32,3 +32,10 @@ export function unsubscribeLink(req, email) {
   const params = new URLSearchParams({ email, token: unsubscribeToken(email) });
   return `${siteUrl(req)}/api/unsubscribe?${params}`;
 }
+
+// The link that subscribes someone again. It uses the same signature, so it
+// only works for the address the email was sent to.
+export function subscribeLink(req, email) {
+  const params = new URLSearchParams({ email, token: unsubscribeToken(email) });
+  return `${siteUrl(req)}/api/subscribe?${params}`;
+}

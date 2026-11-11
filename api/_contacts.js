@@ -45,3 +45,10 @@ export async function markUnsubscribed(apiKey, email) {
   if (await call(apiKey, 'PATCH', contactUrl(email), { unsubscribed: true })) return true;
   return call(apiKey, 'POST', CONTACTS_URL, { email, unsubscribed: true });
 }
+
+// Subscribes someone again (from the "Subscribe again" link). If they aren't
+// a contact yet, adds them as subscribed.
+export async function markSubscribed(apiKey, email) {
+  if (await call(apiKey, 'PATCH', contactUrl(email), { unsubscribed: false })) return true;
+  return call(apiKey, 'POST', CONTACTS_URL, { email, unsubscribed: false });
+}

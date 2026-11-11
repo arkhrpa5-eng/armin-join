@@ -12,7 +12,7 @@
 //                         or "v3" (invisible check, small badge in the corner). Must match your key's type.
 //                         Leave the reCAPTCHA settings out and the form works without any check.
 
-import { unsubscribeLink } from './_unsubscribe.js';
+import { unsubscribeLink, subscribeLink } from './_unsubscribe.js';
 import { saveContact } from './_contacts.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -149,6 +149,7 @@ export default async function handler(req, res) {
 
   // 3. Send the thank-you to the person who joined.
   const unsubscribeUrl = unsubscribeLink(req, email);
+  const subscribeUrl = subscribeLink(req, email);
   const emailSent = await sendEmail(apiKey, {
     from,
     to: [email],
@@ -164,8 +165,9 @@ export default async function handler(req, res) {
 <p>I'll be in touch soon.</p>
 <p>Armin</p>
 <hr style="border:0;border-top:1px solid #ddd;margin:24px 0 12px">
-<p style="font-size:12px;color:#777">Don't want emails from Armin? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#777">Unsubscribe</a></p>`,
-    text: `Hi ${firstName},\n\nThank you for joining! This email came from the very first API I've built, so you're part of something new.\n\nI'll be in touch soon.\n\nArmin\n\n---\nDon't want emails from Armin? Unsubscribe: ${unsubscribeUrl}`,
+<p style="font-size:12px;color:#777">Don't want emails from Armin? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#777">Unsubscribe</a><br>
+Unsubscribed by mistake? <a href="${escapeHtml(subscribeUrl)}" style="color:#777">Subscribe again</a></p>`,
+    text: `Hi ${firstName},\n\nThank you for joining! This email came from the very first API I've built, so you're part of something new.\n\nI'll be in touch soon.\n\nArmin\n\n---\nDon't want emails from Armin? Unsubscribe: ${unsubscribeUrl}\nUnsubscribed by mistake? Subscribe again: ${subscribeUrl}`,
   });
 
   return res.status(201).json({ joined: true, emailSent });
