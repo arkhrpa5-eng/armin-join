@@ -229,6 +229,23 @@
   .join-btn:disabled { cursor: default; opacity: .7; transform: none; }
   .join-btn:disabled:hover { background: var(--cta); }
 
+  .check-btn {
+    justify-self: start;
+    height: 3rem;
+    padding: 0 1.5rem;
+    font: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    background: transparent;
+    border: 1.5px solid var(--field-line);
+    border-radius: .75rem;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .check-btn:hover { border-color: var(--muted); }
+  .check-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .check-btn:disabled { cursor: default; opacity: .7; }
+
   /* Request and response slab */
   .slab {
     position: sticky;
@@ -304,11 +321,11 @@
   }
   @media (max-width: 26rem) {
     .pair { grid-template-columns: 1fr; }
-    .join-btn { justify-self: stretch; }
+    .join-btn, .check-btn { justify-self: stretch; }
   }
   @media (prefers-reduced-motion: reduce) {
     .reply { animation: none; }
-    .field input, .join-btn { transition: none; }
+    .field input, .join-btn, .check-btn { transition: none; }
   }
 </style>
 </head>
@@ -366,6 +383,7 @@
           <p class="err" id="robotErr" aria-live="polite"></p>
         </div>
         <button class="join-btn" id="joinBtn" type="button">Join me</button>
+        <button class="check-btn" id="checkBtn" type="button">Check my subscription</button>
       </div>
     </div>
 
@@ -627,6 +645,60 @@
     });
   });
   btn.addEventListener('click', join);
+
+  // "Check my subscription": only the email is needed.
+  var checkBtn = document.getElementById('checkBtn');
+  var emailField = fields[2];
+  var checking = false;
+
+  async function checkSubscription() {
+    if (checking) return;
+    var address = email.value.trim();
+    var problem = emailField.check(address);
+    fields[0].err.textContent = ''; fields[0].el.removeAttribute('aria-invalid');
+    fields[1].err.textContent = ''; fields[1].el.removeAttribute('aria-invalid');
+    emailField.err.textContent = problem;
+    if (problem) {
+      email.setAttribute('aria-invalid', 'true');
+      email.focus();
+      return;
+    }
+    email.removeAttribute('aria-invalid');
+    checking = true;
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Checking\u2026';
+    try {
+      var res = await fetch('/api/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: address })
+      });
+      var data = {};
+      try { data = await res.json(); } catch (e) { /* no body */ }
+      if (!res.ok) {
+        showReply('bad', res.status + ' ' + (res.statusText || 'Error'), 'Couldn\u2019t check that email.',
+          data.error || 'Try again in a minute.');
+      } else if (data.status === 'subscribed') {
+        showReply('ok', '200 OK', 'You\u2019re subscribed.',
+          address + ' is on Armin\u2019s list. To stop his emails, use the Unsubscribe link at the bottom of any of them.');
+      } else if (data.status === 'unsubscribed') {
+        showReply('bad', '200 OK', 'You\u2019re unsubscribed.',
+          address + ' won\u2019t get emails from Armin. To rejoin, reply to one of his earlier emails and he\u2019ll add you back.');
+      } else {
+        showReply('bad', '404 Not Found', 'You\u2019re not on the list.',
+          address + ' hasn\u2019t joined yet. Add your name above and click Join me.');
+      }
+    } catch (e) {
+      showReply('bad', 'Network error', 'Couldn\u2019t check that email.',
+        'Your request didn\u2019t reach the server. Check your connection and try again.');
+    } finally {
+      checking = false;
+      checkBtn.disabled = false;
+      checkBtn.textContent = 'Check my subscription';
+    }
+  }
+
+  checkBtn.addEventListener('click', checkSubscription);
   renderRequest();
   setupRecaptcha();
 
