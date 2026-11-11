@@ -12,6 +12,8 @@
 //                         or "v3" (invisible check, small badge in the corner). Must match your key's type.
 //                         Leave the reCAPTCHA settings out and the form works without any check.
 
+import { unsubscribeLink } from './_unsubscribe.js';
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function recaptchaVersion() {
@@ -142,16 +144,24 @@ export default async function handler(req, res) {
   }
 
   // 2. Send the thank-you to the person who joined.
+  const unsubscribeUrl = unsubscribeLink(req, email);
   const emailSent = await sendEmail(apiKey, {
     from,
     to: [email],
     reply_to: owner,
     subject: 'Thank you for joining!',
+    // Lets Gmail, Outlook and Apple Mail show their own "Unsubscribe" button.
+    headers: {
+      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
     html: `<p>Hi ${safeFirst},</p>
 <p>Thank you for joining! This email came from the very first API I've built, so you're part of something new.</p>
 <p>I'll be in touch soon.</p>
-<p>Armin</p>`,
-    text: `Hi ${firstName},\n\nThank you for joining! This email came from the very first API I've built, so you're part of something new.\n\nI'll be in touch soon.\n\nArmin`,
+<p>Armin</p>
+<hr style="border:0;border-top:1px solid #ddd;margin:24px 0 12px">
+<p style="font-size:12px;color:#777">Don't want emails from Armin? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#777">Unsubscribe</a></p>`,
+    text: `Hi ${firstName},\n\nThank you for joining! This email came from the very first API I've built, so you're part of something new.\n\nI'll be in touch soon.\n\nArmin\n\n---\nDon't want emails from Armin? Unsubscribe: ${unsubscribeUrl}`,
   });
 
   return res.status(201).json({ joined: true, emailSent });
