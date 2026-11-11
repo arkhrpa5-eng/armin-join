@@ -13,7 +13,7 @@
 //                         Leave the reCAPTCHA settings out and the form works without any check.
 
 import { unsubscribeLink } from './_unsubscribe.js';
-import { saveContact, isUnsubscribed } from './_contacts.js';
+import { saveContact } from './_contacts.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -130,19 +130,6 @@ export default async function handler(req, res) {
   const safeFirst = escapeHtml(firstName);
   const safeLast = escapeHtml(lastName);
   const safeEmail = escapeHtml(email);
-
-  // An address that unsubscribed never gets emailed from this form again,
-  // even if someone types it in. You get a heads-up so you can decide.
-  if (await isUnsubscribed(apiKey, email)) {
-    await sendEmail(apiKey, {
-      from,
-      to: [owner],
-      subject: `Tried to rejoin: ${firstName} ${lastName} (unsubscribed)`,
-      html: `<p><strong>${safeFirst} ${safeLast}</strong> filled in the form again, but ${safeEmail} unsubscribed earlier, so no email was sent to them.</p><p>If they really want back in, you can switch them to subscribed in Resend under Contacts.</p>`,
-      text: `${firstName} ${lastName} filled in the form again, but ${email} unsubscribed earlier, so no email was sent to them.\n\nIf they really want back in, you can switch them to subscribed in Resend under Contacts.`,
-    });
-    return res.status(200).json({ joined: false, unsubscribed: true });
-  }
 
   // 1. Tell you about the new signup. This email is your list.
   const ownerNotified = await sendEmail(apiKey, {
